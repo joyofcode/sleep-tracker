@@ -45,28 +45,18 @@ async function ouraFetch<T>(endpoint: string, params: Record<string, string>): P
 
 export async function fetchAndStoreSleepData(date: string): Promise<SleepData | null> {
   try {
-    // Oura sleep periods may be indexed by the day you woke up;
-    // query a 2-day window to ensure we catch the right period
-    const prevDate = new Date(date + 'T12:00:00');
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevStr = prevDate.toISOString().split('T')[0];
-
     const [sleepScores, readinessScores, sleepPeriods] = await Promise.all([
       ouraFetch<OuraSleepDoc>('daily_sleep', { start_date: date, end_date: date }),
       ouraFetch<OuraReadinessDoc>('daily_readiness', { start_date: date, end_date: date }),
-      ouraFetch<OuraSleepPeriod>('sleep', { start_date: prevStr, end_date: date }),
+      ouraFetch<OuraSleepPeriod>('sleep', { start_date: date, end_date: date }),
     ]);
 
     const sleepScore = sleepScores[0]?.score ?? null;
     const readinessScore = readinessScores[0]?.score ?? null;
 
-    // Pick the best matching sleep period:
-    // 1. Exact date match, 2. Previous day (last night's sleep), 3. Any long_sleep
-    const exactMatch = sleepPeriods.filter(p => p.day === date);
-    const prevMatch = sleepPeriods.filter(p => p.day === prevStr);
-    const candidates = exactMatch.length > 0 ? exactMatch : prevMatch.length > 0 ? prevMatch : sleepPeriods;
-    const mainSleep = candidates.find(p => p.type === 'long_sleep') ?? candidates[0];
-    console.log('Oura sync:', { date, periodsTotal: sleepPeriods.length, days: sleepPeriods.map(p => p.day), usedDay: mainSleep?.day });
+    // Only use sleep period data that matches this date exactly.
+    // Oura may delay publishing detailed period data — show score without details until available.
+    const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0] ?? null;
 
     const record = {
       date,
@@ -81,7 +71,7 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
       bedtime_end: mainSleep?.bedtime_end ?? null,
       efficiency: mainSleep?.efficiency ?? null,
       latency_minutes: mainSleep ? Math.round(mainSleep.latency / 60) : null,
-      oura_raw_json: { sleepScores, readinessScores, sleepPeriods: candidates },
+      oura_raw_json: { sleepScores, readinessScores, sleepPeriods },
     };
 
     // Delete existing record first to ensure clean upsert of all fields
