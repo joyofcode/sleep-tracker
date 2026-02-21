@@ -56,6 +56,7 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
 
     // Use the "long_sleep" period (main sleep), fall back to first
     const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0];
+    console.log('Oura sync:', { date, sleepScores: sleepScores.length, readiness: readinessScores.length, periods: sleepPeriods.length, mainSleep });
 
     const record = {
       date,
@@ -73,9 +74,12 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
       oura_raw_json: { sleepScores, readinessScores, sleepPeriods },
     };
 
+    // Delete existing record first to ensure clean upsert of all fields
+    await supabase.from('sleep_data').delete().eq('date', date);
+
     const { data, error } = await supabase
       .from('sleep_data')
-      .upsert(record, { onConflict: 'date' })
+      .insert(record)
       .select()
       .single();
 
