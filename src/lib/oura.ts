@@ -45,23 +45,15 @@ async function ouraFetch<T>(endpoint: string, params: Record<string, string>): P
 
 export async function fetchAndStoreSleepData(date: string): Promise<SleepData | null> {
   try {
-    // Oura date mapping:
-    //   daily_sleep score for "Feb 20" = the night of Feb 19→20
-    //   sleep period for that night has day="Feb 19" (when you fell asleep)
-    //   BUT querying sleep(start=Feb19, end=Feb19) returns nothing —
-    //   the period only appears when end_date covers the wake-up day.
-    //   So query sleep from (date-2) to (date-1) to reliably catch it.
-    const prev1 = new Date(date + 'T12:00:00');
-    prev1.setDate(prev1.getDate() - 1);
-    const prev1Str = prev1.toISOString().split('T')[0];
-    const prev2 = new Date(date + 'T12:00:00');
-    prev2.setDate(prev2.getDate() - 2);
-    const prev2Str = prev2.toISOString().split('T')[0];
+    // Oura sleep period query: for score date X, query sleep(X, X+1)
+    const nextDate = new Date(date + 'T12:00:00');
+    nextDate.setDate(nextDate.getDate() + 1);
+    const nextStr = nextDate.toISOString().split('T')[0];
 
     const [sleepScores, readinessScores, sleepPeriods] = await Promise.all([
       ouraFetch<OuraSleepDoc>('daily_sleep', { start_date: date, end_date: date }),
       ouraFetch<OuraReadinessDoc>('daily_readiness', { start_date: date, end_date: date }),
-      ouraFetch<OuraSleepPeriod>('sleep', { start_date: prev2Str, end_date: prev1Str }),
+      ouraFetch<OuraSleepPeriod>('sleep', { start_date: date, end_date: nextStr }),
     ]);
 
     const sleepScore = sleepScores[0]?.score ?? null;
