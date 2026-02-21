@@ -60,10 +60,13 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
     const sleepScore = sleepScores[0]?.score ?? null;
     const readinessScore = readinessScores[0]?.score ?? null;
 
-    // Filter to only periods matching the selected date, then pick main sleep
-    const matchingPeriods = sleepPeriods.filter(p => p.day === date);
-    const mainSleep = matchingPeriods.find(p => p.type === 'long_sleep') ?? matchingPeriods[0];
-    console.log('Oura sync:', { date, periodsTotal: sleepPeriods.length, matching: matchingPeriods.length, mainSleep: mainSleep?.day });
+    // Pick the best matching sleep period:
+    // 1. Exact date match, 2. Previous day (last night's sleep), 3. Any long_sleep
+    const exactMatch = sleepPeriods.filter(p => p.day === date);
+    const prevMatch = sleepPeriods.filter(p => p.day === prevStr);
+    const candidates = exactMatch.length > 0 ? exactMatch : prevMatch.length > 0 ? prevMatch : sleepPeriods;
+    const mainSleep = candidates.find(p => p.type === 'long_sleep') ?? candidates[0];
+    console.log('Oura sync:', { date, periodsTotal: sleepPeriods.length, days: sleepPeriods.map(p => p.day), usedDay: mainSleep?.day });
 
     const record = {
       date,
@@ -78,7 +81,7 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
       bedtime_end: mainSleep?.bedtime_end ?? null,
       efficiency: mainSleep?.efficiency ?? null,
       latency_minutes: mainSleep ? Math.round(mainSleep.latency / 60) : null,
-      oura_raw_json: { sleepScores, readinessScores, sleepPeriods: matchingPeriods },
+      oura_raw_json: { sleepScores, readinessScores, sleepPeriods: candidates },
     };
 
     // Delete existing record first to ensure clean upsert of all fields
