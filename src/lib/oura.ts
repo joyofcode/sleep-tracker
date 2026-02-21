@@ -47,21 +47,28 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
   try {
     // Oura date mapping:
     //   daily_sleep score for "Feb 20" = the night of Feb 19→20
-    //   sleep period for that night has day="Feb 19" (the night you fell asleep)
-    // So to get the period matching a daily_sleep date, query the previous day
-    const prevDate = new Date(date + 'T12:00:00');
-    prevDate.setDate(prevDate.getDate() - 1);
-    const prevStr = prevDate.toISOString().split('T')[0];
+    //   sleep period for that night has day="Feb 19" (when you fell asleep)
+    //   BUT querying sleep(start=Feb19, end=Feb19) returns nothing —
+    //   the period only appears when end_date covers the wake-up day.
+    //   So query sleep from (date-2) to (date-1) to reliably catch it.
+    const prev1 = new Date(date + 'T12:00:00');
+    prev1.setDate(prev1.getDate() - 1);
+    const prev1Str = prev1.toISOString().split('T')[0];
+    const prev2 = new Date(date + 'T12:00:00');
+    prev2.setDate(prev2.getDate() - 2);
+    const prev2Str = prev2.toISOString().split('T')[0];
 
     const [sleepScores, readinessScores, sleepPeriods] = await Promise.all([
       ouraFetch<OuraSleepDoc>('daily_sleep', { start_date: date, end_date: date }),
       ouraFetch<OuraReadinessDoc>('daily_readiness', { start_date: date, end_date: date }),
-      ouraFetch<OuraSleepPeriod>('sleep', { start_date: prevStr, end_date: prevStr }),
+      ouraFetch<OuraSleepPeriod>('sleep', { start_date: prev2Str, end_date: prev1Str }),
     ]);
 
     const sleepScore = sleepScores[0]?.score ?? null;
     const readinessScore = readinessScores[0]?.score ?? null;
-    const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0] ?? null;
+    // Pick the most recent long_sleep period (closest to the score date)
+    const longSleeps = sleepPeriods.filter(p => p.type === 'long_sleep');
+    const mainSleep = longSleeps[longSleeps.length - 1] ?? sleepPeriods[sleepPeriods.length - 1] ?? null;
 
     const record = {
       date,
