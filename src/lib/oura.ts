@@ -56,7 +56,8 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
 
     // Use the "long_sleep" period (main sleep), fall back to first
     const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0];
-    console.log('Oura sync:', { date, sleepScores: sleepScores.length, readiness: readinessScores.length, periods: sleepPeriods.length, mainSleep });
+    console.log('Oura sync raw sleepPeriods:', JSON.stringify(sleepPeriods, null, 2));
+    console.log('Oura sync mainSleep:', JSON.stringify(mainSleep, null, 2));
 
     const record = {
       date,
