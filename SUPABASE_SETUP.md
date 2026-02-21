@@ -19,10 +19,29 @@
 | Table | Purpose |
 |-------|---------|
 | `sleep_data` | Stores Oura Ring sleep scores, readiness, and sleep stage durations |
-| `habits` | Configurable list of habits/supplements to track (seeded with 20 defaults) |
-| `daily_logs` | Daily entries linking a date + habit to a value (toggle/rating/time) |
+| `habits` | Configurable list of habits/supplements with compound input types and a `config` jsonb column |
+| `daily_logs` | Daily entries linking a date + habit to a value (simple string or JSON for compound types) |
 
 It also enables Row Level Security with permissive policies (single-user app).
+
+### Supported input types
+
+| Input Type | Example Habit | Value stored in `daily_logs.value` |
+|------------|---------------|-------------------------------------|
+| `toggle` | Magnesium Glycinate | `"true"` / `"false"` |
+| `toggle_time` | Dinner | `{"enabled":true,"time":"19:30"}` |
+| `toggle_time_duration` | Strength Training | `{"enabled":true,"time":"18:00","duration":45}` |
+| `toggle_quantity_time` | Alcohol | `{"enabled":true,"quantity":2,"time":"21:00"}` |
+| `duration_rating` | Screen Time Before Sleep | `{"duration":30,"rating":3}` |
+| `rating` | Sleep Quality (1-10) | `"7"` (config: `{"max":10}`) |
+| `rating_3level` | Night Wakings | `"Low"` / `"Medium"` / `"High"` |
+| `time` | Earliest Wake Up | `"05:30"` |
+
+### Seeded habits (20 total)
+
+**Night (15):** Magnesium Glycinate, Lithium Orotate, Berberine, Glycine (toggles) · Strength Training, Cardio, HIIT, Sauna (toggle+time+duration) · Dinner, Dessert (toggle+time) · Warm Shower, Breathing Exercise (toggles) · Alcohol (toggle+quantity+time) · Screen Time (duration+rating) · Stress/Anxiety (rating 1-5)
+
+**Morning (5):** Earliest Wake Up (time) · Eyes Stuck Feeling (toggle) · Night Wakings (low/med/high) · Sleep Quality (rating 1-10) · Energy Level (rating 1-10)
 
 ## 3. Get Your Credentials
 
