@@ -45,17 +45,22 @@ async function ouraFetch<T>(endpoint: string, params: Record<string, string>): P
 
 export async function fetchAndStoreSleepData(date: string): Promise<SleepData | null> {
   try {
+    // Oura date mapping:
+    //   daily_sleep score for "Feb 20" = the night of Feb 19→20
+    //   sleep period for that night has day="Feb 19" (the night you fell asleep)
+    // So to get the period matching a daily_sleep date, query the previous day
+    const prevDate = new Date(date + 'T12:00:00');
+    prevDate.setDate(prevDate.getDate() - 1);
+    const prevStr = prevDate.toISOString().split('T')[0];
+
     const [sleepScores, readinessScores, sleepPeriods] = await Promise.all([
       ouraFetch<OuraSleepDoc>('daily_sleep', { start_date: date, end_date: date }),
       ouraFetch<OuraReadinessDoc>('daily_readiness', { start_date: date, end_date: date }),
-      ouraFetch<OuraSleepPeriod>('sleep', { start_date: date, end_date: date }),
+      ouraFetch<OuraSleepPeriod>('sleep', { start_date: prevStr, end_date: prevStr }),
     ]);
 
     const sleepScore = sleepScores[0]?.score ?? null;
     const readinessScore = readinessScores[0]?.score ?? null;
-
-    // Only use sleep period data that matches this date exactly.
-    // Oura may delay publishing detailed period data — show score without details until available.
     const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0] ?? null;
 
     const record = {
