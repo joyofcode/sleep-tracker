@@ -14,6 +14,12 @@ function formatMinutes(mins: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+function formatTime(iso: string | null): string {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
 function scoreColor(score: number | null): string {
   if (score === null) return 'text-gray-500';
   if (score >= 85) return 'text-green-400';
@@ -42,12 +48,14 @@ export default function SleepScoreCard({ data, loading, onSync, syncing }: Props
   const deep = data?.deep_sleep_minutes ?? null;
   const rem = data?.rem_sleep_minutes ?? null;
   const light = data?.light_sleep_minutes ?? null;
+  const awake = data?.awake_minutes ?? null;
   const score = data?.sleep_score ?? null;
 
   const stageTotal = (deep ?? 0) + (rem ?? 0) + (light ?? 0);
 
   return (
     <div className="bg-surface-card rounded-2xl p-5 mb-6">
+      {/* Score + sync */}
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
@@ -84,6 +92,24 @@ export default function SleepScoreCard({ data, loading, onSync, syncing }: Props
         </button>
       </div>
 
+      {/* Bedtime / Wake time row */}
+      {data?.bedtime_start && (
+        <div className="flex justify-between mt-3 text-xs">
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <span>🛏</span>
+            <span>{formatTime(data.bedtime_start)}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <span>⏱</span>
+            <span>{data.latency_minutes != null ? `${data.latency_minutes}m to fall asleep` : '--'}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-gray-400">
+            <span>☀️</span>
+            <span>{formatTime(data.bedtime_end)}</span>
+          </div>
+        </div>
+      )}
+
       {/* Sleep stages bar */}
       {stageTotal > 0 && (
         <div className="mt-4">
@@ -112,6 +138,18 @@ export default function SleepScoreCard({ data, loading, onSync, syncing }: Props
               Light {formatMinutes(light)}
             </span>
           </div>
+        </div>
+      )}
+
+      {/* Efficiency + Awake row */}
+      {(data?.efficiency != null || awake != null) && (
+        <div className="flex justify-between mt-3 pt-3 border-t border-white/5 text-xs text-gray-400">
+          {data?.efficiency != null && (
+            <span>Efficiency {data.efficiency}%</span>
+          )}
+          {awake != null && (
+            <span>Awake {formatMinutes(awake)}</span>
+          )}
         </div>
       )}
     </div>

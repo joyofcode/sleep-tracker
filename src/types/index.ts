@@ -7,6 +7,11 @@ export interface SleepData {
   deep_sleep_minutes: number | null;
   rem_sleep_minutes: number | null;
   light_sleep_minutes: number | null;
+  awake_minutes: number | null;
+  bedtime_start: string | null;
+  bedtime_end: string | null;
+  efficiency: number | null;
+  latency_minutes: number | null;
   oura_raw_json: Record<string, unknown> | null;
   created_at: string;
 }

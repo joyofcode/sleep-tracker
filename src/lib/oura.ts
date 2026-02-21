@@ -17,10 +17,15 @@ interface OuraReadinessDoc {
 
 interface OuraSleepPeriod {
   day: string;
+  bedtime_start: string;
+  bedtime_end: string;
   total_sleep_duration: number;
   deep_sleep_duration: number;
   rem_sleep_duration: number;
   light_sleep_duration: number;
+  awake_time: number;
+  efficiency: number;
+  latency: number;
   type: string;
 }
 
@@ -60,6 +65,11 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
       deep_sleep_minutes: mainSleep ? Math.round(mainSleep.deep_sleep_duration / 60) : null,
       rem_sleep_minutes: mainSleep ? Math.round(mainSleep.rem_sleep_duration / 60) : null,
       light_sleep_minutes: mainSleep ? Math.round(mainSleep.light_sleep_duration / 60) : null,
+      awake_minutes: mainSleep ? Math.round(mainSleep.awake_time / 60) : null,
+      bedtime_start: mainSleep?.bedtime_start ?? null,
+      bedtime_end: mainSleep?.bedtime_end ?? null,
+      efficiency: mainSleep?.efficiency ?? null,
+      latency_minutes: mainSleep ? Math.round(mainSleep.latency / 60) : null,
       oura_raw_json: { sleepScores, readinessScores, sleepPeriods },
     };
 

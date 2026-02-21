@@ -10,6 +10,11 @@ CREATE TABLE IF NOT EXISTS sleep_data (
   deep_sleep_minutes int,
   rem_sleep_minutes int,
   light_sleep_minutes int,
+  awake_minutes int,
+  bedtime_start timestamptz,
+  bedtime_end timestamptz,
+  efficiency int,
+  latency_minutes int,
   oura_raw_json jsonb,
   created_at timestamptz DEFAULT now()
 );
