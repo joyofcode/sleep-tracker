@@ -1,9 +1,6 @@
 import { supabase } from './supabase';
 import type { SleepData } from '../types';
 
-const OURA_API = 'https://api.ouraring.com/v2/usercollection';
-const OURA_TOKEN = import.meta.env.VITE_OURA_TOKEN as string;
-
 interface OuraSleepDoc {
   day: string;
   score: number;
@@ -27,16 +24,14 @@ interface OuraSleepPeriod {
   type: string;
 }
 
+// Calls our Vercel serverless proxy at /api/oura to avoid CORS issues
 async function ouraFetch<T>(endpoint: string, params: Record<string, string>): Promise<T[]> {
-  const url = new URL(`${OURA_API}/${endpoint}`);
-  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
-
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${OURA_TOKEN}` },
-  });
+  const searchParams = new URLSearchParams({ endpoint, ...params });
+  const res = await fetch(`/api/oura?${searchParams.toString()}`);
 
   if (!res.ok) {
-    throw new Error(`Oura API error: ${res.status} ${res.statusText}`);
+    const body = await res.json().catch(() => ({}));
+    throw new Error(`Oura proxy error: ${res.status} ${body.error ?? res.statusText}`);
   }
 
   const json = await res.json();
