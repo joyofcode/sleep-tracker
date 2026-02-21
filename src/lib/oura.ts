@@ -45,18 +45,29 @@ async function ouraFetch<T>(endpoint: string, params: Record<string, string>): P
 
 export async function fetchAndStoreSleepData(date: string): Promise<SleepData | null> {
   try {
+    // Oura sleep periods may be indexed by the day you woke up;
+    // query a 2-day window to ensure we catch the right period
     const [sleepScores, readinessScores, sleepPeriods] = await Promise.all([
       ouraFetch<OuraSleepDoc>('daily_sleep', { start_date: date, end_date: date }),
       ouraFetch<OuraReadinessDoc>('daily_readiness', { start_date: date, end_date: date }),
       ouraFetch<OuraSleepPeriod>('sleep', { start_date: date, end_date: date }),
     ]);
 
+    // If no sleep periods found for this date, try the previous day
+    let periods = sleepPeriods;
+    if (periods.length === 0) {
+      const prevDate = new Date(date + 'T12:00:00');
+      prevDate.setDate(prevDate.getDate() - 1);
+      const prevStr = prevDate.toISOString().split('T')[0];
+      periods = await ouraFetch<OuraSleepPeriod>('sleep', { start_date: prevStr, end_date: date });
+    }
+
     const sleepScore = sleepScores[0]?.score ?? null;
     const readinessScore = readinessScores[0]?.score ?? null;
 
     // Use the "long_sleep" period (main sleep), fall back to first
-    const mainSleep = sleepPeriods.find(p => p.type === 'long_sleep') ?? sleepPeriods[0];
-    console.log('Oura sync raw sleepPeriods:', JSON.stringify(sleepPeriods, null, 2));
+    const mainSleep = periods.find(p => p.type === 'long_sleep') ?? periods[0];
+    console.log('Oura sync raw sleepPeriods:', JSON.stringify(periods, null, 2));
     console.log('Oura sync mainSleep:', JSON.stringify(mainSleep, null, 2));
 
     const record = {
@@ -72,7 +83,7 @@ export async function fetchAndStoreSleepData(date: string): Promise<SleepData | 
       bedtime_end: mainSleep?.bedtime_end ?? null,
       efficiency: mainSleep?.efficiency ?? null,
       latency_minutes: mainSleep ? Math.round(mainSleep.latency / 60) : null,
-      oura_raw_json: { sleepScores, readinessScores, sleepPeriods },
+      oura_raw_json: { sleepScores, readinessScores, sleepPeriods: periods },
     };
 
     // Delete existing record first to ensure clean upsert of all fields
